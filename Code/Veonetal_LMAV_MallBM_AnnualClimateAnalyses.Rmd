@@ -1,0 +1,107 @@
+---
+title: "AnnualClimateAnalyses"
+author: "John Veon"
+date: "2022-12-20"
+output: html_document
+---
+
+```{r}
+LinRegDat <- read.csv("./Veonetal_Temp_Riv_Rainfall_BroadAnalysis.csv", header=T,)
+
+KWDat <- read.csv("./Veonetal_KW_Test.csv", header=T,)
+
+library(ggplot2) ### regular plotting with ggplot
+library(ggfortify) ### this gives us autoplot
+library(ggthemes) # gives us theme_few()
+library(lattice) ##QQPlots
+```
+
+
+###Linear Regression of Annual Average Measurements
+```{r}
+LinRegDat$Year <- LinRegDat$Year ###Year
+LinRegDat$AvgTemp <- LinRegDat$AvgTempLMAV ##Avearage Temp
+LinRegDat$AvgTD <- LinRegDat$Average_Temp_Deviations ###Temp Deviation
+LinRegDat$AvgDis <- LinRegDat$AverageDischargeLMAV ###Average Discharge 
+LinRegDat$AvgDD <- LinRegDat$Average_Discharge_Deviation_LMAV ###Discharge Deviation
+LinRegDat$AvgCumuRain <- LinRegDat$AverageCumulativeRainfall ###Average Cumulative Rainfall
+LinRegDat$AvgRD <- LinRegDat$AverageDevPerYR ###Cumulative Rainfall Deviation
+```
+
+```{r}
+###Checking Distributions
+hist(LinRegDat$AvgCumuRain)
+hist(LinRegDat$AvgDis)
+hist(LinRegDat$AvgTemp)
+```
+
+
+```{r}
+##Rainfall###
+AverageRain = lm(Year ~ AvgCumuRain, data = LinRegDat)
+summary(AverageRain)
+plot(AverageRain)
+```
+
+```{r}
+##Discharge###
+AverageDischarge = lm(Year ~ AvgDis, data = LinRegDat)
+summary(AverageDischarge)
+plot(AverageDischarge)
+```
+
+```{r}
+##Temperature###
+AverageTemp = lm(Year ~ AvgTemp, data = LinRegDat)
+summary(AverageTemp)
+plot(AverageTemp)
+```
+
+###Linear Regression of Measurement Devaitions from Annual Average
+```{r}
+##Rainfall###
+AverageRD = lm(Year ~ AvgRD, data = LinRegDat)
+summary(AverageRD)
+plot(AverageRD)
+```
+
+```{r}
+##Discharge###
+AverageDD = lm(Year ~ AvgDD, data = LinRegDat)
+summary(AverageDD)
+plot(AverageDD)
+```
+
+```{r}
+##Temperature###
+AverageTD = lm(Year ~ AvgTD, data = LinRegDat)
+summary(AverageTD)
+plot(AverageTD)
+```
+
+
+###Kruskal-Wallis Test###
+```{r}
+###Rainfall
+kruskal.test(AM ~ WetDryNum, data = KWDat)
+kruskal.test(AF ~ WetDryNum, data = KWDat)
+kruskal.test(JM ~ WetDryNum, data = KWDat)
+kruskal.test(JF ~ WetDryNum, data = KWDat)
+```
+
+```{r}
+###Discharge
+kruskal.test(AM ~ HighLowNum, data = KWDat)
+kruskal.test(AF ~ HighLowNum, data = KWDat)
+kruskal.test(JM ~ HighLowNum, data = KWDat)
+kruskal.test(JF ~ HighLowNum, data = KWDat)
+```
+
+```{r}
+###Temperature
+kruskal.test(AM ~ HotColdNum, data = KWDat)
+kruskal.test(AF ~ HotColdNum, data = KWDat)
+kruskal.test(JM ~ HotColdNum, data = KWDat)
+kruskal.test(JF ~ HotColdNum, data = KWDat)
+```
+

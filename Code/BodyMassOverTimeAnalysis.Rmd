@@ -7,7 +7,7 @@ output: html_document
 
 ##Read in data and packages
 ```{r}
-MallBM <- read.csv("./BM_Over_Time_for_Pub2.csv", header = TRUE)
+MallBM <- read.csv("./Veonetal_1979_2021_LMAV_MallardBMDat.csv", header = TRUE)
 library(ggplot2) ###plotting with ggplot
 library(ggfortify) ###this gives us autoplot
 library(ggthemes) ###gives us theme_few()
@@ -42,7 +42,7 @@ MallBM$LocationM <- as.factor(MallBM$LOC_NUM) #Location
 ###Check correlation of fixed effects
 ```{r}
 # Load data
-BM_Fixed <- MallBM[, c(14,22,37,44,48)] #Number of column where each fixed effect is located
+BM_Fixed <- MallBM[, c(6,8,19,21,25)] #Number of column where each fixed effect is located
 
 BM_Cor <- rcorr(as.matrix(BM_Fixed))
 BM_Cor
