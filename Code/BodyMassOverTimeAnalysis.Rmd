@@ -1,0 +1,415 @@
+---
+title: "BodyMassOverTimeAnalysis"
+author: "John Veon"
+date: "2022-12-20"
+output: html_document
+---
+
+##Read in data and packages
+```{r}
+MallBM <- read.csv("./BM_Over_Time_for_Pub2.csv", header = TRUE)
+library(ggplot2) ###plotting with ggplot
+library(ggfortify) ###this gives us autoplot
+library(ggthemes) ###gives us theme_few()
+library(lme4) ###Mixed model package
+library(lmerTest) ###Derives conservative p values using Satterthwaites Appx.
+library(ggeffects) ###Package for developing predictions based on model estimates
+library(Hmisc) ###Pearsons correlation matrix
+```
+
+```{r}
+getwd()
+```
+
+
+##Variable development
+```{r}
+#Response
+MallBM$bodymassM <- MallBM$BM 
+
+#Fixed Effects
+MallBM$AgeSex <- as.factor(MallBM$AgeSex) #AgeSex
+MallBM$YearM <- MallBM$SEAS_NUM #Year
+MallBM$DayM <- MallBM$DayofSeason #Day of Season
+MallBM$RainCMLog <- log(MallBM$Rain_CM+0.01) #Rainfall
+MallBM$Gagelog <- log(MallBM$Gage_M) #River Gage Height
+MallBM$WSIM <- MallBM$WSI #Weather Severity Index
+
+#Random Effect
+MallBM$LocationM <- as.factor(MallBM$LOC_NUM) #Location
+```
+
+###Check correlation of fixed effects
+```{r}
+# Load data
+BM_Fixed <- MallBM[, c(14,22,37,44,48)] #Number of column where each fixed effect is located
+
+BM_Cor <- rcorr(as.matrix(BM_Fixed))
+BM_Cor
+```
+
+###Distribution of Response (Body Mass)
+```{r}
+hist(MallBM$bodymassM, main = NULL, xlab = "Mallard body mass (g)")
+```
+
+###Build Models###
+```{r}
+YearAgeSexMod = lmer(bodymassM ~ YearM*AgeSex + (1|LocationM), data = MallBM, REML = F)
+
+DayAgeSexMod = lmer(bodymassM ~ DayM*AgeSex + (1|LocationM), data = MallBM, REML = F)
+
+RainAgeSexMod = lmer(bodymassM ~ RainCMLog*AgeSex + (1|LocationM), data = MallBM, REML = F)
+
+GageAgeSexMod = lmer(bodymassM ~ Gagelog*AgeSex + (1|LocationM), data = MallBM, REML = F)
+
+WSIAgeSexMod = lmer(bodymassM ~ WSIM*AgeSex + (1|LocationM), data = MallBM, REML = F)
+
+nullmallmod = lmer(bodymassM ~ (1|LocationM), data = MallBM, REML = F)
+```
+
+##Checking model fit against null
+```{r}
+anova(nullmallmod, YearAgeSexMod)
+anova(nullmallmod, DayAgeSexMod)
+anova(nullmallmod, RainAgeSexMod)
+anova(nullmallmod, GageAgeSexMod)
+anova(nullmallmod, WSIAgeSexMod)
+```
+
+
+###Assumptions tests (residual plots)
+```{r}
+#plot
+plot(YearAgeSexMod)
+plot(DayAgeSexMod)
+plot(RainAgeSexMod)
+plot(GageAgeSexMod)
+plot(WSIAgeSexMod)
+```
+
+
+##Check for linearity
+```{r}
+#plot residuals against original Response
+plot(resid(YearAgeSexMod),MallBM$BM)
+plot(resid(DayAgeSexMod),MallBM$BM)
+plot(resid(RainAgeSexMod),MallBM$BM)
+plot(resid(GageAgeSexMod),MallBM$BM)
+plot(resid(WSIAgeSexMod),MallBM$BM)
+```
+
+```{r}
+#plot residuals against each Predictor
+#YearAgeSexMod
+plot(resid(YearAgeSexMod),MallBM$YearM)
+
+#DayAgeSexMod
+plot(resid(DayAgeSexMod),MallBM$DayM)
+
+#RainAgeSexMod
+plot(resid(RainAgeSexMod),MallBM$RainCMLog)
+
+#GageAgeSexMod
+plot(resid(GageAgeSexMod),MallBM$Gagelog)
+
+#WSIAgeSexMod
+plot(resid(WSIAgeSexMod),MallBM$WSIM)
+```
+
+##Check for Normality of residuals
+```{r}
+#normality plot
+qqmath(YearAgeSexMod)
+qqmath(DayAgeSexMod)
+qqmath(RainAgeSexMod)
+qqmath(GageAgeSexMod)
+qqmath(WSIAgeSexMod)
+```
+
+```{r}
+#plot residuals
+plot(resid(YearAgeSexMod))
+plot(resid(DayAgeSexMod))
+plot(resid(RainAgeSexMod))
+plot(resid(GageAgeSexMod))
+plot(resid(WSIAgeSexMod))
+```
+
+```{r}
+ggplot(data.frame(eta=predict(YearAgeSexMod,type="link"),pearson=residuals(YearAgeSexMod,type="pearson")),aes(x=eta,y=pearson)) + geom_point()
+
+ggplot(data.frame(eta=predict(DayAgeSexMod,type="link"),pearson=residuals(DayAgeSexMod,type="pearson")),aes(x=eta,y=pearson)) + geom_point()
+
+ggplot(data.frame(eta=predict(RainAgeSexMod,type="link"),pearson=residuals(RainAgeSexMod,type="pearson")),aes(x=eta,y=pearson)) + geom_point()
+
+ggplot(data.frame(eta=predict(GageAgeSexMod,type="link"),pearson=residuals(GageAgeSexMod,type="pearson")),aes(x=eta,y=pearson)) + geom_point()
+
+ggplot(data.frame(eta=predict(WSIAgeSexMod,type="link"),pearson=residuals(WSIAgeSexMod,type="pearson")),aes(x=eta,y=pearson)) + geom_point()
+```
+
+###Model Results###
+```{r}
+##Model Results - Year####
+summary(YearAgeSexMod)
+confint(YearAgeSexMod, level = 0.95)
+```
+
+
+```{r}
+##Model Results - Day####
+summary(DayAgeSexMod)
+confint(DayAgeSexMod, level = 0.95)
+```
+
+
+```{r}
+##Model Results - Rain####
+summary(RainAgeSexMod)
+confint(RainAgeSexMod, level = 0.95)
+```
+
+
+```{r}
+##Model Results - Gage####
+summary(GageAgeSexMod)
+confint(GageAgeSexMod, level = 0.95)
+```
+
+
+```{r}
+##Model Results - WSI####
+summary(WSIAgeSexMod)
+confint(WSIAgeSexMod, level = 0.95)
+```
+
+```{r}
+##Model Results - Null####
+summary(nullmallmod)
+confint(nullmallmod, level = 0.95)
+```
+
+
+####Pediction Graphs####
+###Year Graph###
+```{r}
+predictyear = ggpredict(YearAgeSexMod, c("YearM [1,6,12,18,24,30,36,42]", "AgeSex"))
+plot(predictyear)
+predictyear
+```
+
+
+```{r}
+###checking variables
+predictedBM = predictyear$predicted
+predictYears = predictyear$x
+Age_Sex = predictyear$group
+predictse = predictyear$std.error
+predictconflow = predictyear$conf.low
+predictconfhigh = predictyear$conf.high
+```
+
+
+
+```{r}
+##Graph Code
+
+levels(Age_Sex) = c("Adult male", "Adult female", "Juvenile male", "Juvenile female") ###Renaming levels manually
+
+Age_Sex <- factor(Age_Sex, levels=c('Adult male', 'Juvenile male', 'Adult female', 'Juvenile female')) ##Reordering levels to fit the scheme of the slopes
+
+MallardYearOfficial = ggplot(data = predictyear, aes(x = predictYears,y = predictedBM, group= Age_Sex)) + ##Define data
+  geom_ribbon(aes(ymin = predictconflow, ymax = predictconfhigh), fill = "grey86") + #Define upper and lower 95% CI ribbon
+  geom_line(size = 0.5)+  #fit it into lines
+  geom_point(aes(shape = Age_Sex), size = 2) +
+  scale_shape_manual(values=c(15, 0, 17, 2)) + #add points and change shape based on AgeSex
+  #Allows zooming into graph range, without altering y axis physically
+  guides(shape = guide_legend(title = "Age and sex")) + #Rename Legend Title and reverse order of labels 
+  ylab("Body mass (g)") + xlab("Year") + #Rename x and y-axis
+  theme_classic() + #clean white background
+  scale_x_discrete(limits = c(1:42), breaks = c(1,11,21,31,41), labels = c("79-80","89-90","99-00","09-10", "19-20")) +
+  theme(text = element_text(family="Helvetica"), axis.title.x = element_text(face="bold", size = 18), axis.title.y = element_text(face="bold", size = 18), axis.text.x = element_text(size = 14), axis.text.y = element_text(size = 14), legend.title=element_text(size=18),legend.text=element_text(size=14)) #Helvetica font, size 18 font, and bold axis titles
+
+MallardYearOfficial
+```
+
+
+###Day Graph
+```{r}
+predictday = ggpredict(DayAgeSexMod, c("DayM", "AgeSex"))
+plot(predictday)
+predictday
+```
+
+
+```{r}
+###checking variables
+predictedBM = predictday$predicted
+predictDays = predictday$x
+Age_Sex = predictday$group
+predictse = predictday$std.error
+predictconflow = predictday$conf.low
+predictconfhigh = predictday$conf.high
+```
+
+```{r}
+predictday$x
+```
+
+```{r}
+max(MallBM$DayM)
+```
+
+
+```{r}
+###Relabel Legend
+Age_Sex.labs <- c("Adult Male", "Juvenile Male", "Adult Female", "Juvenile Female")
+names(Age_Sex.labs) <- c("1","3", "2", "4")
+```
+
+```{r}
+###Graph Code
+
+levels(Age_Sex) = c("Adult male","Adult female", "Juvenile male", "Juvenile female") ###Renaming levels manually 
+
+Age_Sex <- factor(Age_Sex, levels=c('Adult male', 'Juvenile male', 'Adult female', 'Juvenile female')) ##Reordering levels to fit the scheme of the slopes
+
+MallardDayOfficial = ggplot(data = predictday, aes(x = predictDays,y = predictedBM, group= Age_Sex)) + ##Define data
+  geom_ribbon(aes(ymin = predictconflow, ymax = predictconfhigh),fill = "grey86") + #Define upper and lower 95% CI ribbon
+  geom_line(size = 0.5)+  #fit it into lines
+  geom_point(aes(shape = Age_Sex), size = 2) +
+  scale_shape_manual(values=c(15, 0, 17, 2)) + #add points and change shape based on AgeSex
+  #Allows zooming into graph range, without altering y axis physically
+  guides(shape = guide_legend(title = "Age and sex")) + #Rename Legend Title and reverse order of labels 
+  ylab("Body mass (g)") + xlab("Day of season") + #Rename x and y-axis
+  theme_classic() + #clean white background
+  theme(text = element_text(family="Helvetica"), axis.title.x = element_text(face="bold", size = 18), axis.title.y = element_text(face="bold", size = 18), axis.text.x = element_text(size = 14), axis.text.y = element_text(size = 14), legend.title=element_text(size=18),legend.text=element_text(size=14))
+
+MallardDayOfficial
+```
+
+###Rain Graph
+```{r}
+###setting up model to graph
+predictrain = ggpredict(RainAgeSexMod, c("RainCMLog [-5,-4.8,-4.6,-4.4,-4.2,-4,-3.8,-3.6,-3.4,-3.2,-3,-2.8,-2.6,-2.4,-2.2,-2,-1.8,-1.6,-1.4,-1.2,-1,-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8,1,1.4,1.6,1.8,1.2,2,2.2]", "AgeSex"))
+plot(predictrain, facet = TRUE)
+predictrain
+```
+
+
+```{r}
+###checking variables
+predictedBM = predictrain$predicted
+predictRain = predictrain$x
+Age_Sex = predictrain$group
+predictse = predictrain$std.error
+predictconflow = predictrain$conf.low
+predictconfhigh = predictrain$conf.high
+```
+
+
+```{r}
+###setting up back-transformed x-axis
+predictrain$Rain.Orig <-(exp(predictrain$x))
+predictrain <- as.data.frame(predictrain)
+predictrain$Rain.Orig
+```
+
+
+```{r}
+# New facet label names for AgeSex variable
+groups.labs <- c("Adult male", "Juvenile male", "Adult female", "Juvenile female")
+names(groups.labs) <- c("1", "3", "2", "4")
+```
+
+```{r}
+predictrain$facet = factor(predictrain$group, levels = c("1", "3", "2", "4")) ###Reorders facet labels manually
+```
+
+```{r}
+##Graph Code
+
+levels(Age_Sex) = c("Adult male", "Juvenile male", "Adult female", "Juvenile female") ###Renaming levels manually because using group in ggplot wont allow scale_xxx_manual to work
+
+Age_Sex <- factor(Age_Sex, levels=c('Adult male', 'Juvenile male', 'Adult female', 'Juvenile female')) ##Reordering levels to fit the schemce of the slopes
+
+MallardRainOfficial = ggplot(data = predictrain, aes(x = Rain.Orig,y = predictedBM, facet = facet)) + ##Define data
+  geom_ribbon(aes(ymin = predictconflow, ymax = predictconfhigh),fill = "grey86") + #Define upper and lower 95% CI ribbon
+  geom_line(size = 0.5)+#fit it into lines
+  #Allows zooming into graph range, without altering y axis physically
+  guides(shape = guide_legend(title = "Age and sex")) + #Rename Legend Title and reverse order of labels 
+  ylab("Body mass (g)") + xlab("Rainfall (cm)") + #Rename x and y-axis
+  theme_classic() + #clean white background
+  theme(text = element_text(family="Helvetica"), axis.title.x = element_text(face="bold", size = 18), axis.title.y = element_text(face="bold", size = 18), axis.text.x = element_text(size = 14), axis.text.y = element_text(size = 14), strip.text = element_text(size = 13, face = "bold"), strip.background = element_rect(fill = "grey86")) +
+  facet_wrap(~facet, ncol = 4, labeller = labeller(facet = groups.labs))
+
+MallardRainOfficial
+```
+
+###River Gage Graph
+```{r}
+max(MallBM$Gage_M)
+```
+
+
+```{r}
+###setting up model to graph
+predictgage = ggpredict(GageAgeSexMod, c("Gagelog[-0.5,-0.4,-0.3,-0.2,-0.1,0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2.0,2.1,2.2,2.3,2.4]", "AgeSex"))
+plot(predictgage, facet = TRUE)
+predictgage
+```
+
+
+```{r}
+###checking variables
+predictedBM = predictgage$predicted
+predictGage = predictgage$x
+Age_Sex = predictgage$group
+predictse = predictgage$std.error
+predictconflow = predictgage$conf.low
+predictconfhigh = predictgage$conf.high
+```
+
+
+```{r}
+###setting up back-transformed x-axis
+predictgage$Gage.Orig <-(exp(predictgage$x))
+predictgage <- as.data.frame(predictgage)
+predictgage$Gage.Orig
+```
+
+
+```{r}
+# New facet label names for AgeSex variable
+groups.labs <- c("Adult male", "Adult female", "Juvenile male", "Juvenile female")
+names(groups.labs) <- c("1", "2", "3", "4")
+predictgage$facet = factor(predictgage$group, levels = c("1", "3", "2", "4"))
+```
+
+```{r}
+##Graph Code
+
+levels(Age_Sex) = c("Adult male", "Juvenile male", "Adult female", "Juvenile female") ###Renaming levels manually 
+
+MallardGageOfficial = ggplot(data = predictgage, aes(x = Gage.Orig,y = predictedBM, facet = facet)) + ##Define data
+  geom_ribbon(aes(ymin = predictconflow, ymax = predictconfhigh),fill = "grey86") + #Define upper and lower 95% CI ribbon
+  geom_line(size = 0.5)+#fit it into lines
+  #Allows zooming into graph range, without altering y axis physically
+  guides(shape = guide_legend(title = "Age and sex")) + #Rename Legend Title and reverse order of labels 
+  ylab("Body mass (g)") + xlab("Gage height (m)") + #Rename x and y-axis
+  theme_classic() + #clean white background
+  theme(text = element_text(family="Helvetica"), axis.title.x = element_text(face="bold", size = 18), axis.title.y = element_text(face="bold", size = 18), axis.text.x = element_text(size = 14), axis.text.y = element_text(size = 14), strip.text = element_text(size = 13, face = "bold"), strip.background = element_rect(fill = "grey86")) +  
+  facet_wrap(~facet, ncol = 4, labeller = labeller(facet = groups.labs))
+
+MallardGageOfficial
+```
+
+###NOTE: Must rerun each graph code string and then highlight and run each respective save code individually. Repeat for each graph.
+```{r}
+##Use the ggsave function to export your figures using the appropriate size and quality. 
+ggsave(MallardRainOfficial, file="RainAgeSexgraph.jpg", width=25, height=20, units="cm", dpi=1200)
+ggsave(MallardGageOfficial, file="GageAgeSexgraph.jpg", width=25, height=20, units="cm", dpi=1200)
+ggsave(MallardDayOfficial, file="DayAgeSexgraph.jpg", width=25, height=20, units="cm", dpi=1200)
+ggsave(MallardYearOfficial, file="YearAgeSexgraph.jpg", width=25, height=20, units="cm", dpi=1200)
+ggsave(mallhist, file="MallardMassHistograph.jpg", width=25, height=20, units="cm", dpi=1200)
+```
